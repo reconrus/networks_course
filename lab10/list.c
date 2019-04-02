@@ -33,7 +33,7 @@ void push(list_t * head, char* val) {
     }
 
     current->next = malloc(sizeof(list_t));
-    memcpy(&current->next->val, val, LENGTH);
+    strcpy(current->next->val, val);
     current->next->next = NULL;
 }
 

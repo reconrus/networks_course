@@ -68,7 +68,20 @@ void handle_request(node_info_t* node_info){
 
     struct sockaddr_in client_addr = node_info->node_addr;
     char* ip_str = inet_ntoa(client_addr.sin_addr);
-    if(find_item(bdb, ip_str)) return;
+    int comm_socket_fd = node_info->comm_socket_fd;
+    int ind = node_info->t_number;
+
+    pthread_mutex_lock(&mutex_bdb);
+    int is_blocked = find_item(bdb, ip_str);
+    pthread_mutex_unlock(&mutex_bdb);
+    if(is_blocked){
+        printf("Blocked\n");
+        close(comm_socket_fd);
+        occupied_thread[ind] = 0;
+        free(node_info);
+        return; 
+    }
+
     int* con_number; 
     if(!(con_number = map_get(&cdb, ip_str))){
         pthread_mutex_lock(&mutex_cdb);
@@ -80,6 +93,14 @@ void handle_request(node_info_t* node_info){
             pthread_mutex_lock(&mutex_bdb);
             push(bdb, ip_str);
             pthread_mutex_unlock(&mutex_bdb);
+            printf("Blocked\n");
+            pthread_mutex_lock(&mutex_cdb);
+            map_remove(&cdb, ip_str);
+            pthread_mutex_unlock(&mutex_cdb);
+            close(comm_socket_fd);
+            occupied_thread[ind] = 0;
+            free(node_info);
+            return; 
         }
         else{
             pthread_mutex_lock(&mutex_cdb);
@@ -88,10 +109,8 @@ void handle_request(node_info_t* node_info){
         }
     }
 
-    int comm_socket_fd = node_info->comm_socket_fd;
     
     int addr_len = node_info->addr_len;
-    int ind = node_info->t_number;
     char data_buffer[BUFFER_SIZE];
     int sent_recv_bytes;
     int type = 0; 

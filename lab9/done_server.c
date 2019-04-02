@@ -66,7 +66,7 @@ void handle_request(node_info_t* node_info){
     int type = 0; 
 
     sent_recv_bytes = recvfrom(comm_socket_fd, (int*) &type, sizeof(int), 0,
-                                  (struct sockaddr_in *) client_addr, &addr_len);
+                                  (struct sockaddr *) client_addr, &addr_len);
 
     if (sent_recv_bytes == 0) {
             close(comm_socket_fd);
@@ -79,7 +79,7 @@ void handle_request(node_info_t* node_info){
 
         memset(data_buffer, 0, sizeof(data_buffer));
         sent_recv_bytes = recvfrom(comm_socket_fd, (char *) data_buffer, sizeof(data_buffer), 0,
-                                  (struct sockaddr_in *) client_addr, &addr_len);
+                                  (struct sockaddr *) client_addr, &addr_len);
 
         if (sent_recv_bytes == 0) {
             close(comm_socket_fd);
@@ -92,7 +92,7 @@ void handle_request(node_info_t* node_info){
         int number_of_nodes = 0;
 
         sent_recv_bytes = recvfrom(comm_socket_fd, (int*) &number_of_nodes, sizeof(int), 0,
-                                  (struct sockaddr_in *) client_addr, &addr_len);
+                                  (struct sockaddr *) client_addr, &addr_len);
 
         if (sent_recv_bytes == 0) {
             close(comm_socket_fd);
@@ -102,7 +102,7 @@ void handle_request(node_info_t* node_info){
         for(; number_of_nodes > 0; number_of_nodes--){
             memset(data_buffer, 0, sizeof(data_buffer));
             sent_recv_bytes = recvfrom(comm_socket_fd, (char *) data_buffer, sizeof(data_buffer), 0,
-                                  (struct sockaddr_in *) client_addr, &addr_len);
+                                  (struct sockaddr *) client_addr, &addr_len);
 
             if (sent_recv_bytes == 0) {
                 close(comm_socket_fd);
@@ -119,7 +119,7 @@ void handle_request(node_info_t* node_info){
 
         memset(data_buffer, 0, sizeof(data_buffer));
         sent_recv_bytes = recvfrom(comm_socket_fd, (char *) data_buffer, sizeof(data_buffer), 0,
-                                  (struct sockaddr_in *) client_addr, &addr_len);
+                                  (struct sockaddr *) client_addr, &addr_len);
         
         if (sent_recv_bytes == 0) {
             close(comm_socket_fd);
@@ -136,7 +136,7 @@ void handle_request(node_info_t* node_info){
         if (fp == NULL) {
             printf ("There is no such file\n");
             sent_recv_bytes = sendto(comm_socket_fd, (int *) &count, sizeof(int), 0,
-                             (struct sockaddr_in *) client_addr, sizeof(struct sockaddr_in));
+                             (struct sockaddr *) client_addr, sizeof(struct sockaddr));
         }
         else{
             char c;
@@ -148,13 +148,13 @@ void handle_request(node_info_t* node_info){
             
             printf("File contains %d words\n", count);
             sent_recv_bytes = sendto(comm_socket_fd, (int*) &count, sizeof(int), 0,
-                             (struct sockaddr_in *) client_addr, sizeof(struct sockaddr_in));
+                             (struct sockaddr *) client_addr, sizeof(struct sockaddr));
             fseek(fp, 0L, SEEK_SET);  
             char word[128];
             while(count > 0){
                 fscanf(fp, "%s", word);
                 sent_recv_bytes = sendto(comm_socket_fd, (char*) word, sizeof(word), 0,
-                             (struct sockaddr_in *) client_addr, sizeof(struct sockaddr_in));
+                             (struct sockaddr *) client_addr, sizeof(struct sockaddr));
 
                 count--;
             }
@@ -187,13 +187,13 @@ void server(){
     }
 
     fd_set readfds;
-    addr_len = sizeof(struct sockaddr_in);
+    addr_len = sizeof(struct sockaddr);
 
     server_addr.sin_family = AF_INET;/*This socket will process only ipv4 network packets*/
     server_addr.sin_port = htons(node_port);/*Server will process any data arriving on port no 2000*/
     server_addr.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(master_sock_tcp_fd, (struct sockaddr_in *) &server_addr, sizeof(struct sockaddr_in)) == -1) {
+    if (bind(master_sock_tcp_fd, (struct sockaddr *) &server_addr, sizeof(struct sockaddr)) == -1) {
         fprintf(stderr, "socket bind failed\n");
         exit(-1);
     }
@@ -294,22 +294,22 @@ void client_sync(char* node_info){
     
     sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-    if(connect(sockfd, (struct sockaddr_in*) &dest, sizeof(struct sockaddr_in)) < 0) printf("Connection to %s:%s failed\n",ip,port);
+    if(connect(sockfd, (struct sockaddr*) &dest, sizeof(struct sockaddr)) < 0) printf("Connection to %s:%s failed\n",ip,port);
     else{ 
         int type = SYNC;
 
-        sent_recv_bytes = sendto(sockfd, &type, sizeof(int), 0, (struct sockaddr_in *)&dest, sizeof(struct sockaddr_in));
+        sent_recv_bytes = sendto(sockfd, &type, sizeof(int), 0, (struct sockaddr *)&dest, sizeof(struct sockaddr));
 
         char* send_vis = vis();
         //sending current node info name:ip:port:files
-        sent_recv_bytes = sendto(sockfd, send_vis, BUFFER_SIZE, 0, (struct sockaddr_in *)&dest, sizeof(struct sockaddr_in));
+        sent_recv_bytes = sendto(sockfd, send_vis, BUFFER_SIZE, 0, (struct sockaddr *)&dest, sizeof(struct sockaddr));
 
         map_iter_t iter = map_iter(&map);
 
         char* next_node;
         while(next_node = map_next(&map, &iter)){
             if(strcmp(node_info, next_node) != 0)
-                sent_recv_bytes = sendto(sockfd, next_node, BUFFER_SIZE, 0, (struct sockaddr_in *)&dest, sizeof(struct sockaddr_in));       
+                sent_recv_bytes = sendto(sockfd, next_node, BUFFER_SIZE, 0, (struct sockaddr *)&dest, sizeof(struct sockaddr));       
         }
         free(send_vis);
         printf("Successfull sync with node %s:%s:%s\n", name, ip, port);
@@ -329,7 +329,7 @@ void client_request(char* file_name){
         sent_recv_bytes = 0,
         type = REQUEST,
         count = 0,
-        addr_len = sizeof(struct sockaddr_in);
+        addr_len = sizeof(struct sockaddr);
 
     struct sockaddr_in dest;
     
@@ -352,14 +352,14 @@ void client_request(char* file_name){
             
             sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-            connect(sockfd, (struct sockaddr_in*) &dest, sizeof(struct sockaddr_in));
+            connect(sockfd, (struct sockaddr*) &dest, sizeof(struct sockaddr));
 
-            sent_recv_bytes = sendto(sockfd, &type, sizeof(int), 0, (struct sockaddr_in *)&dest, sizeof(struct sockaddr_in));
+            sent_recv_bytes = sendto(sockfd, &type, sizeof(int), 0, (struct sockaddr *)&dest, sizeof(struct sockaddr));
 
-            sent_recv_bytes = sendto(sockfd, file, BUFFER_SIZE, 0, (struct sockaddr_in *)&dest, sizeof(struct sockaddr_in));
+            sent_recv_bytes = sendto(sockfd, file, BUFFER_SIZE, 0, (struct sockaddr *)&dest, sizeof(struct sockaddr));
 
             sent_recv_bytes =  recvfrom(sockfd, &count, sizeof(int), 0,
-	           (struct sockaddr_in *)&dest, &addr_len);
+	           (struct sockaddr *)&dest, &addr_len);
 
             if(count == -1){
                 close(sockfd);
@@ -377,7 +377,7 @@ void client_request(char* file_name){
                 char word[128];
                 while(count > 0){
                     sent_recv_bytes =  recvfrom(sockfd, (char*) word, sizeof(word), 0,
-                        (struct sockaddr_in *)&dest, &addr_len);
+                        (struct sockaddr *)&dest, &addr_len);
                     fwrite(word, sizeof(char), strlen(word), fp);        
                     fwrite(" ", sizeof(char), 1, fp);
                     count--;

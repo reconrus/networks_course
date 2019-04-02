@@ -187,7 +187,7 @@ void server(){
     addr_len = sizeof(struct sockaddr);
 
     server_addr.sin_family = AF_INET;/*This socket will process only ipv4 network packets*/
-    server_addr.sin_port = node_port;/*Server will process any data arriving on port no 2000*/
+    server_addr.sin_port = htons(node_port);/*Server will process any data arriving on port no 2000*/
     server_addr.sin_addr.s_addr = INADDR_ANY;
 
     if (bind(master_sock_tcp_fd, (struct sockaddr *) &server_addr, sizeof(struct sockaddr)) == -1) {
@@ -250,7 +250,7 @@ char* vis(){
     strcat(data, node_ip);
     strcat(data, ":");
     char port[6] = "";
-    sprintf(port, "%u", node_port);
+    sprintf(port, "%u", htons(node_port));
     strcat(data, port);
     strcat(data, ":");
     

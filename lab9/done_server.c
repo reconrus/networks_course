@@ -172,7 +172,7 @@ void server(){
     printf("Enter IP of the node: ");
     scanf("%s", node_ip);
     printf("Enter port of the node: ");
-    scanf("%u", node_port);
+    scanf("%u", &node_port);
 
     int master_sock_tcp_fd = 0,
         comm_socket_fd = 0,

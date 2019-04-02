@@ -224,7 +224,7 @@ void server(){
             }
 
             printf("Connection accepted from client : %s:%u\n",
-                   inet_ntoa(client_addr -> sin_addr), ntohs(client_addr -> sin_port));
+                   inet_ntoa(client_addr -> sin_addr), client_addr -> sin_port);
 
             int thread = find_free_thread();
 		    if(thread >= 0){
@@ -286,7 +286,7 @@ void client_sync(char* node_info){
 
     struct sockaddr_in dest;
     inet_aton(ip, &dest.sin_addr);
-    dest.sin_port = atoi(port);
+    dest.sin_port = atoi(htons(port));
     dest.sin_family = AF_INET;
     
     sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);

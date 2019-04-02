@@ -88,6 +88,7 @@ void handle_request(node_info_t* node_info){
         
         char* node_i = parse_node(data_buffer);
         printf("Client %s has such files: %s\n", node_i, *map_get(&map, node_i));
+        free(node_i);
         int number_of_nodes = 0;
 
         sent_recv_bytes = recvfrom(comm_socket_fd, (int*) &number_of_nodes, sizeof(int), 0,
@@ -161,9 +162,11 @@ void handle_request(node_info_t* node_info){
             printf("Client %s%u has received file %s", inet_ntoa(client_addr -> sin_addr), 
                 ntohs(client_addr -> sin_port), data_buffer);
         }       
-        occupied_thread[ind] = 0;
-	    return; 
     }
+    free(client_addr);
+    close(comm_socket_fd);
+    occupied_thread[ind] = 0;
+	return; 
 }
 
 void server(){
@@ -172,7 +175,7 @@ void server(){
     printf("Enter IP of the node: ");
     scanf("%s", node_ip);
     printf("Enter port of the node: ");
-    scanf("%u", &node_port);
+    scanf("%hu", &node_port);
 
     int master_sock_tcp_fd = 0,
         comm_socket_fd = 0,
@@ -308,7 +311,7 @@ void client_sync(char* node_info){
             if(strcmp(node_info, next_node) != 0)
                 sent_recv_bytes = sendto(sockfd, next_node, BUFFER_SIZE, 0, (struct sockaddr *)&dest, sizeof(struct sockaddr));       
         }
-
+        free(send_vis);
         printf("Successfull sync with node %s:%s:%s\n", name, ip, port);
     }
     close(sockfd);
@@ -398,7 +401,7 @@ void client_loop(){
             printf("Trying to SYNC node %s\n", key);
             client_sync(key);
         }
-        sleep(100);      
+        sleep(10);      
     } 
 }
 

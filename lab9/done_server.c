@@ -206,13 +206,13 @@ void server(){
     int threads_n = THREADS_COUNT;
 	pthread_t threads[THREADS_COUNT];
 	memset(occupied_thread, 0, sizeof(*occupied_thread));
-    node_info_t node_info = {0}; 
-
+    
+    node_info_t node_info;
     is_initiated = 1;
 
     printf("Server started\n");
     while (1) {
-
+        node_info = {0};
         FD_ZERO(&readfds);                     /* Initialize the file descriptor set*/
         FD_SET(master_sock_tcp_fd, &readfds);  /*Add the socket to this set on which our server is running*/
 

@@ -250,7 +250,7 @@ char* vis(){
     strcat(data, node_ip);
     strcat(data, ":");
     char port[6] = "";
-    sprintf(port, "%u", htons(node_port));
+    sprintf(port, "%u", node_port);
     strcat(data, port);
     strcat(data, ":");
     

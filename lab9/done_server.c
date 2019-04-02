@@ -58,7 +58,8 @@ char* parse_node(char* node){
 
 void handle_request(node_info_t* node_info){
     int comm_socket_fd = node_info->comm_socket_fd;
-    struct sockaddr_in* client_addr = node_info->node_addr;
+    struct sockaddr_in client_addr;
+    memcpy(&client_addr, &node_info->node_addr, sizeof(struct sockaddr_in));
     int addr_len = node_info->addr_len;
     int ind = node_info->t_number;
     char data_buffer[BUFFER_SIZE];
@@ -66,7 +67,7 @@ void handle_request(node_info_t* node_info){
     int type = 0; 
 
     sent_recv_bytes = recvfrom(comm_socket_fd, (int*) &type, sizeof(int), 0,
-                                  (struct sockaddr *) client_addr, &addr_len);
+                                  (struct sockaddr *) &client_addr, &addr_len);
 
     if (sent_recv_bytes == 0) {
             close(comm_socket_fd);
@@ -74,12 +75,12 @@ void handle_request(node_info_t* node_info){
         }
 
     if(type){
-        printf("Client %s:%u wants to synchronize\n", inet_ntoa(client_addr -> sin_addr), 
-                ntohs(client_addr -> sin_port));
+        printf("Client %s:%u wants to synchronize\n", inet_ntoa(client_addr.sin_addr), 
+                ntohs(client_addr.sin_port));
 
         memset(data_buffer, 0, sizeof(data_buffer));
         sent_recv_bytes = recvfrom(comm_socket_fd, (char *) data_buffer, sizeof(data_buffer), 0,
-                                  (struct sockaddr *) client_addr, &addr_len);
+                                  (struct sockaddr *) &client_addr, &addr_len);
 
         if (sent_recv_bytes == 0) {
             close(comm_socket_fd);
@@ -92,7 +93,7 @@ void handle_request(node_info_t* node_info){
         int number_of_nodes = 0;
 
         sent_recv_bytes = recvfrom(comm_socket_fd, (int*) &number_of_nodes, sizeof(int), 0,
-                                  (struct sockaddr *) client_addr, &addr_len);
+                                  (struct sockaddr *) &client_addr, &addr_len);
 
         if (sent_recv_bytes == 0) {
             close(comm_socket_fd);
@@ -102,7 +103,7 @@ void handle_request(node_info_t* node_info){
         for(; number_of_nodes > 0; number_of_nodes--){
             memset(data_buffer, 0, sizeof(data_buffer));
             sent_recv_bytes = recvfrom(comm_socket_fd, (char *) data_buffer, sizeof(data_buffer), 0,
-                                  (struct sockaddr *) client_addr, &addr_len);
+                                  (struct sockaddr *) &client_addr, &addr_len);
 
             if (sent_recv_bytes == 0) {
                 close(comm_socket_fd);
@@ -119,15 +120,15 @@ void handle_request(node_info_t* node_info){
 
         memset(data_buffer, 0, sizeof(data_buffer));
         sent_recv_bytes = recvfrom(comm_socket_fd, (char *) data_buffer, sizeof(data_buffer), 0,
-                                  (struct sockaddr *) client_addr, &addr_len);
+                                  (struct sockaddr *) &client_addr, &addr_len);
         
         if (sent_recv_bytes == 0) {
             close(comm_socket_fd);
             return; 
         }
 
-        printf("Client %s:%u wants to receive file with name %s\n", inet_ntoa(client_addr -> sin_addr), 
-                ntohs(client_addr -> sin_port), data_buffer);
+        printf("Client %s:%u wants to receive file with name %s\n", inet_ntoa(client_addr.sin_addr), 
+                ntohs(client_addr.sin_port), data_buffer);
         
         int count = -1;
         char file_path[1024] = "files/";
@@ -136,7 +137,7 @@ void handle_request(node_info_t* node_info){
         if (fp == NULL) {
             printf ("There is no such file\n");
             sent_recv_bytes = sendto(comm_socket_fd, (int *) &count, sizeof(int), 0,
-                             (struct sockaddr *) client_addr, sizeof(struct sockaddr));
+                             (struct sockaddr *) &client_addr, sizeof(struct sockaddr));
         }
         else{
             char c;
@@ -148,22 +149,21 @@ void handle_request(node_info_t* node_info){
             
             printf("File contains %d words\n", count);
             sent_recv_bytes = sendto(comm_socket_fd, (int*) &count, sizeof(int), 0,
-                             (struct sockaddr *) client_addr, sizeof(struct sockaddr));
+                             (struct sockaddr *) &client_addr, sizeof(struct sockaddr));
             fseek(fp, 0L, SEEK_SET);  
             char word[128];
             while(count > 0){
                 fscanf(fp, "%s", word);
                 sent_recv_bytes = sendto(comm_socket_fd, (char*) word, sizeof(word), 0,
-                             (struct sockaddr *) client_addr, sizeof(struct sockaddr));
+                             (struct sockaddr *) &client_addr, sizeof(struct sockaddr));
 
                 count--;
             }
             fclose(fp);
-            printf("Client %s%u has received file %s", inet_ntoa(client_addr -> sin_addr), 
-                ntohs(client_addr -> sin_port), data_buffer);
+            printf("Client %s%u has received file %s", inet_ntoa(client_addr.sin_addr), 
+                ntohs(client_addr.sin_port), data_buffer);
         }       
     }
-    free(client_addr);
     close(comm_socket_fd);
     occupied_thread[ind] = 0;
 	return; 
@@ -207,33 +207,32 @@ void server(){
 	pthread_t threads[THREADS_COUNT];
 	memset(occupied_thread, 0, sizeof(*occupied_thread));
     
-    node_info_t node_info;
+    node_info_t node_info={0};
+    struct sockaddr_in client_addr;
     is_initiated = 1;
 
     printf("Server started\n");
     while (1) {
-        node_info = {0};
         FD_ZERO(&readfds);                     /* Initialize the file descriptor set*/
         FD_SET(master_sock_tcp_fd, &readfds);  /*Add the socket to this set on which our server is running*/
 
         select(master_sock_tcp_fd + 1, &readfds, NULL, NULL, NULL);
 
         if (FD_ISSET(master_sock_tcp_fd, &readfds)) {
-            struct sockaddr_in* client_addr = malloc(sizeof(struct sockaddr_in));
-            comm_socket_fd = accept(master_sock_tcp_fd, (struct sockaddr_in *) client_addr, &addr_len);
+            comm_socket_fd = accept(master_sock_tcp_fd, (struct sockaddr *) &client_addr, &addr_len);
             if (comm_socket_fd < 0) {
                 printf("accept error : errno = %d\n", errno);
                 exit(0);
             }
 
             printf("Connection accepted from client : %s:%u\n",
-                   inet_ntoa(client_addr -> sin_addr), ntohs(client_addr -> sin_port));
+                   inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
             int thread = find_free_thread();
 		    if(thread >= 0){
                 node_info.addr_len = addr_len;
                 node_info.comm_socket_fd = comm_socket_fd;
-                node_info.node_addr = client_addr;
+                memcpy(&node_info.node_addr, &client_addr, sizeof(struct sockaddr_in));
                 node_info.t_number = thread;
 			    if(pthread_create(&threads[thread], NULL, handle_request, &node_info) != 0){
 			    	fprintf(stderr, "failed to create a thread\n");

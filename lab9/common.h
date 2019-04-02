@@ -13,7 +13,7 @@ typedef struct _result_struct{
 } result_struct_t;
 
 typedef struct _node_info{
-    struct sockaddr_in* node_addr;
+    struct sockaddr_in node_addr;
     int addr_len;
     int comm_socket_fd;
     int t_number; //da, eto kostyl. mne ne hochetsya oborachivat' v escho odin struct. but it works! 

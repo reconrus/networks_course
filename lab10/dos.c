@@ -12,34 +12,6 @@
 
 #define SYNC 1
 
-void client_sync(char* node_info){
-    char node_copy[1024];
-    strcpy(node_copy, node_info); 
-    char* name = strtok(node_copy,":");
-    char* ip = strtok(NULL,":");
-    char* port = strtok(NULL, ":");
-
-    int sockfd = 0, 
-        sent_recv_bytes = 0;
-
-    struct sockaddr_in dest;
-    inet_aton(ip, &dest.sin_addr);
-    dest.sin_port = htons(atoi(port));
-    dest.sin_family = AF_INET;
-    
-    sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    
-    if(connect(sockfd, (struct sockaddr*) &dest, sizeof(struct sockaddr)) < 0) printf("Connection to %s:%s failed\n",ip,port);
-    else{ 
-        int type = SYNC;
-
-        sent_recv_bytes = sendto(sockfd, &type, sizeof(int), 0, (struct sockaddr *)&dest, sizeof(struct sockaddr));
-
-    }
-    close(sockfd);
-}
-
-
 int main(){
     char target_info[128];
     printf("Enter node that you would like to DoS in format ip:port\n");

@@ -67,49 +67,8 @@ char* parse_node(char* node){
 void handle_request(node_info_t* node_info){
 
     struct sockaddr_in client_addr = node_info->node_addr;
-    char* ip_str = inet_ntoa(client_addr.sin_addr);
     int comm_socket_fd = node_info->comm_socket_fd;
     int ind = node_info->t_number;
-
-    pthread_mutex_lock(&mutex_bdb);
-    int is_blocked = find_item(bdb, ip_str);
-    pthread_mutex_unlock(&mutex_bdb);
-    if(is_blocked){
-        printf("Blocked\n");
-        close(comm_socket_fd);
-        occupied_thread[ind] = 0;
-        free(node_info);
-        return; 
-    }
-
-    int* con_number; 
-    if(!(con_number = map_get(&cdb, ip_str))){
-        pthread_mutex_lock(&mutex_cdb);
-        map_set(&cdb, ip_str, 1);
-        pthread_mutex_unlock(&mutex_cdb);
-    }
-    else{
-        if(*con_number > MAX_CONNECTIONS){
-            pthread_mutex_lock(&mutex_bdb);
-            push(bdb, ip_str);
-            pthread_mutex_unlock(&mutex_bdb);
-            printf("Blocked\n");
-            pthread_mutex_lock(&mutex_cdb);
-            map_remove(&cdb, ip_str);
-            pthread_mutex_unlock(&mutex_cdb);
-            close(comm_socket_fd);
-            occupied_thread[ind] = 0;
-            free(node_info);
-            return; 
-        }
-        else{
-            pthread_mutex_lock(&mutex_cdb);
-            map_set(&cdb, ip_str, *con_number+1);
-            pthread_mutex_unlock(&mutex_cdb);
-        }
-    }
-
-    
     int addr_len = node_info->addr_len;
     char data_buffer[BUFFER_SIZE];
     int sent_recv_bytes;
@@ -213,15 +172,15 @@ void handle_request(node_info_t* node_info){
                 ntohs(client_addr.sin_port), data_buffer);
         }       
     }
-    
-    if(con_number != NULL){
+    int *con_number;
+    if(!(con_number = map_get(&cdb, inet_ntoa(client_addr.sin_addr)))){
         pthread_mutex_lock(&mutex_cdb);
-        map_set(&cdb, ip_str, *con_number-1);
+        map_set(&cdb, inet_ntoa(client_addr.sin_addr), *con_number-1);
         pthread_mutex_unlock(&mutex_cdb);
     }
     else{
         pthread_mutex_lock(&mutex_cdb);
-        map_remove(&cdb, ip_str);
+        map_remove(&cdb, inet_ntoa(client_addr.sin_addr));
         pthread_mutex_unlock(&mutex_cdb);
     }
 
@@ -284,6 +243,41 @@ void server(){
             if (comm_socket_fd < 0) {
                 printf("accept error : errno = %d\n", errno);
                 exit(0);
+            }
+
+            char* ip_str = inet_ntoa(client_addr.sin_addr);
+            pthread_mutex_lock(&mutex_bdb);
+            int is_blocked = find_item(bdb, ip_str);
+            pthread_mutex_unlock(&mutex_bdb);
+            if(is_blocked){
+                printf("Blocked\n");
+                close(comm_socket_fd);
+                continue; 
+            }
+
+            int* con_number; 
+            if(!(con_number = map_get(&cdb, ip_str))){
+                pthread_mutex_lock(&mutex_cdb);
+                map_set(&cdb, ip_str, 1);
+                pthread_mutex_unlock(&mutex_cdb);
+            }
+            else{
+                if(*con_number > MAX_CONNECTIONS){
+                    pthread_mutex_lock(&mutex_bdb);
+                    push(bdb, ip_str);
+                    pthread_mutex_unlock(&mutex_bdb);
+                    printf("Blocked\n");
+                    pthread_mutex_lock(&mutex_cdb);
+                    map_remove(&cdb, ip_str);
+                    pthread_mutex_unlock(&mutex_cdb);
+                    close(comm_socket_fd);
+                    continue; 
+                }
+                else{
+                    pthread_mutex_lock(&mutex_cdb);
+                    map_set(&cdb, ip_str, *con_number+1);
+                    pthread_mutex_unlock(&mutex_cdb);
+                }
             }
 
             printf("Connection accepted from client : %s:%u\n",
